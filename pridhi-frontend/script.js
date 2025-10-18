@@ -1,7 +1,7 @@
 // 1. FIREBASE SETUP AND AUTH IMPORTS
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 
@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Mandatorily retrieve config and app ID
     const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
     try {
         setLogLevel('Debug');
@@ -27,9 +26,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Initialize Auth Listener
         onAuthStateChanged(auth, async (user) => {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             if (user) {
                 userId = user.uid;
                 console.log("Authenticated. User ID:", userId);
+                document.getElementById('currentUserId').textContent = userId;
                 await loadUserProfile(appId, userId);
             } else {
                 // Sign in anonymously if no token is available (for local testing/fallback)
@@ -41,6 +42,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             isAuthReady = true;
         });
+
+        // Attach event listener for the Feedback Form here
+        const feedbackForm = document.getElementById('feedbackForm');
+        if (feedbackForm) {
+            feedbackForm.onsubmit = submitFeedbackToBackend;
+        }
         
     } catch (e) {
         console.error("Failed to initialize Firebase or sign in:", e);
@@ -49,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 
-// === EXISTING NAVIGATION, SCROLL, AND STYLE LOGIC ===
+// === EXISTING NAVIGATION, SCROLL, AND STYLE LOGIC (RETAINED) ===
 
 // Define navigation buttons (no Explore)
 const NAV_LINKS = [
@@ -57,11 +64,10 @@ const NAV_LINKS = [
   { label: "Schedule", target: "scheduleForm" },
   { label: "Leaderboard", target: "leaderboardList" },
   { label: "Feedback", target: "feedbackForm" },
-  { label: "Profile", target: "profileSection" }, // Added profile back for consistency
+  { label: "Profile", target: "profileSection" },
 ];
 
 // ====== FIXED NAV BAR (Keep Existing Logic) ======
-// This code assumes the existence of 'nav', '.nav-inner', and '.nav-search' in your HTML.
 const nav = document.querySelector('nav');
 if (nav) {
     nav.style.position = 'fixed';
@@ -69,7 +75,12 @@ if (nav) {
     nav.style.width = '100%';
     nav.style.zIndex = '1000';
     nav.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
-    document.body.style.paddingTop = nav.offsetHeight + 'px';
+    // Wait for DOM content to fully load before calculating offset
+    document.addEventListener('DOMContentLoaded', () => {
+        if (nav) {
+             document.body.style.paddingTop = nav.offsetHeight + 'px';
+        }
+    });
 
     const navInner = document.querySelector('.nav-inner');
     const navButtons = document.createElement('div');
@@ -80,6 +91,9 @@ if (nav) {
 
     const navSearch = document.querySelector('.nav-search');
     if (navInner && navSearch) {
+        const oldLink = navSearch.querySelector('.nav-link');
+        if (oldLink) oldLink.remove();
+        
         navInner.insertBefore(navButtons, navSearch);
     }
     
@@ -93,7 +107,7 @@ if (nav) {
         if (link.target === 'top') {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (link.target === 'profileSection') {
-          toggleProfileSection(); // only show when clicked
+          toggleProfileSection(); 
         } else {
           const section = document.getElementById(link.target);
           if (section) {
@@ -114,7 +128,7 @@ if (nav) {
       sectionIds.forEach(id => {
         const section = document.getElementById(id);
         if (section) {
-          const sectionTop = section.offsetTop - 150;
+          const sectionTop = section.offsetTop - (nav ? nav.offsetHeight + 20 : 150); 
           if (window.scrollY >= sectionTop) current = id;
         }
       });
@@ -142,7 +156,7 @@ if (nav) {
 }
 
 
-// ====== PROFILE SECTION LOGIC (UPDATED FOR FIRESTORE) ======
+// ====== PROFILE SECTION LOGIC (FIRESTORE) ======
 
 const profileSection = document.getElementById('profileSection');
 const profileForm = document.getElementById('profileForm');
@@ -212,10 +226,12 @@ async function loadUserProfile(appId, userId) {
 
 // Toggle show/hide for profile section
 function toggleProfileSection() {
-    if (!profileSection) return; // Guard
+    if (!profileSection) return; 
     if (profileSection.style.display === 'none' || profileSection.style.display === '') {
         profileSection.style.display = 'block';
-        profileSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => {
+            profileSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
     } else {
         profileSection.style.display = 'none';
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -223,15 +239,60 @@ function toggleProfileSection() {
 }
 
 
-// === BACKEND CONNECTION LOGIC (RENAMED and KEPT) ===
+// ====== FEEDBACK SUBMISSION TO FLASK API (PORT 5000) ======
+
+/**
+ * Submits feedback to the Flask backend's /contact API (which saves to SQLite).
+ */
+async function submitFeedbackToBackend(e) {
+    e.preventDefault();
+    const name = document.getElementById('feedbackName').value.trim();
+    const email = document.getElementById('feedbackEmail').value.trim();
+    const message = document.getElementById('feedbackInput').value.trim();
+
+    if (!message) {
+        return showMessage('Input Required', 'Please type some feedback.', 'error');
+    }
+    
+    // Clear form fields immediately to give visual feedback
+    document.getElementById('feedbackInput').value = '';
+    document.getElementById('feedbackName').value = '';
+    document.getElementById('feedbackEmail').value = '';
+
+    try {
+        // 🚨 Using port 5000
+        const response = await fetch("http://127.0.0.1:5000/contact", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ name, email, message })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.status === 'success') {
+            showMessage('Feedback Submitted', data.message, 'success');
+        } else {
+            // Handle server-side error messages
+            throw new Error(data.message || `Server Error: ${response.status}`);
+        }
+
+    } catch (error) {
+        console.error("Error submitting feedback:", error);
+        showMessage('Submission Failed', `Error: ${error.message}. Check backend console.`, 'error');
+    }
+}
+
+// ====== BACKEND CONNECTION TEST (PORT 5000) ======
 
 /**
  * Function to test the connection to the Flask backend's /test route.
- * * NOTE: The backend is running on port 5001 (http://127.0.0.1:5001).
+ * * NOTE: The backend is now expected to be running on port 5000.
  */
 function testBackendConnection() {
-    // ⚠️ IMPORTANT: Use port 5001 as defined in your app.py
-    const backendUrl = "http://127.0.0.1:5001/test"; 
+    // 🚨 Using port 5000
+    const backendUrl = "http://127.0.0.1:5000/test"; 
 
     console.log("Attempting to connect to:", backendUrl);
 
@@ -240,28 +301,24 @@ function testBackendConnection() {
         headers: {
             "Content-Type": "application/json"
         },
-        // Send some test data
         body: JSON.stringify({ 
             name: "Skill Barter Frontend",
             test_type: "Connection Check"
         })
     })
     .then(response => {
-        // Check if the request was successful (HTTP status 200-299)
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        return response.json(); // Parse the JSON response body
+        return response.json(); 
     })
     .then(data => {
-        // SUCCESS: Display the response in the console and a message box
         console.log("✅ Success! Response from Backend:", data);
         showMessage("Backend Test Successful", "Message from server: " + data.message, "success");
     })
     .catch(error => {
-        // ERROR: Handle network issues, CORS errors, or JSON parsing errors
         console.error("❌ Error connecting to backend:", error);
-        showMessage("Connection Error", "Could not connect to the backend (or CORS issue). Check console for details. Ensure Flask server is running on port 5001.", "error");
+        showMessage("Connection Error", "Could not connect to the backend (or CORS issue). Check console for details. Ensure Flask server is running on port 5000.", "error");
     });
 }
 
@@ -275,7 +332,6 @@ function showMessage(title, message, type) {
          return;
     }
     
-    // Create the message box element
     const msgBox = document.createElement('div');
     msgBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-xl text-white z-50 transition-opacity duration-300`;
 
@@ -300,4 +356,3 @@ function showMessage(title, message, type) {
         setTimeout(() => msgBox.remove(), 300); // Remove element after fade
     }, 5000);
 }
-// ⚠️ Functions are ready to be called from the HTML!
