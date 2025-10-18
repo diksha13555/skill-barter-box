@@ -1,373 +1,553 @@
-// 1. FIREBASE SETUP AND AUTH IMPORTS
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skill BarterBox</title>
+    <!-- Load Tailwind CSS for utility classes (used in script.js showMessage) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Existing custom styles */
+        #feedbackInput {
+            border-radius: 12px;
+            border: black 1px solid;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body,
+        html {
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.5;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        :root {
+            --bg: #f7f9fb;
+            --primary: #526eff; /* Adjusted primary for better contrast */
+            --dark: #1f2937;
+            --muted: #6b7280;
+            --card: #ffffff;
+            /* Using a placeholder since local images won't load */
+            background-color: var(--bg);
+            /* background-image: url(bg2.jpg); */
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
 
 
-// Globals for Firebase Instances
-let app;
-let db;
-let auth;
-let userId = null;
-let isAuthReady = false;
+        /* Nav */
+        nav {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            /* The JS handles position:fixed, but keep this style */
+            z-index: 1000;
+        }
 
-// 2. INITIALIZE FIREBASE & AUTHENTICATION
-document.addEventListener('DOMContentLoaded', async () => {
-    // Mandatorily retrieve config and app ID
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-    // const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Keep commented if not immediately needed
+        .nav-btn {
+            background-color: #afafb4;
+            color: white;
+            border-radius: 20px;
+            width: 100px; /* Increased width to match JS */
+            height: 30px;
+            border: #6b7280;
+            font-weight: 700 !important;
+            font-size: 12px;
+        }
 
-    try {
-        setLogLevel('Debug');
-        app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-        
-        // Initialize Auth Listener
-        onAuthStateChanged(auth, async (user) => {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            if (user) {
-                userId = user.uid;
-                console.log("Authenticated. User ID:", userId);
-                document.getElementById('currentUserId').textContent = userId;
-                await loadUserProfile(appId, userId);
-            } else {
-                // Sign in anonymously if no token is available (for local testing/fallback)
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            }
-            isAuthReady = true;
-        });
+        .nav-inner {
+            max-width: 1100px;
+            margin: auto;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-        // Attach event listener for the Feedback Form here
-        const feedbackForm = document.getElementById('feedbackForm');
-        if (feedbackForm) {
-            feedbackForm.onsubmit = submitFeedbackToBackend;
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-brand .logo {
+            width: 40px;
+            height: 40px;
+            /* Placeholder for logo image */
+            background-color: #3b82f6; 
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            padding-left: 0; 
+        }
+
+        .nav-brand .tit {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .nav-search {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-search input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 999px;
+            width: 280px;
+            margin-left: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background-color: #afafb4;
+            color: rgb(255, 255, 255);
+            border: none;
+            border-radius: 999px;
+            font-weight: 500;
+        }
+
+        .btn-outline {
+            background: #afafb4;
+            border: 1px solid #d1d5db;
+            color: white;
         }
         
-    } catch (e) {
-        console.error("Failed to initialize Firebase or sign in:", e);
-        showMessage("Setup Error", "Failed to initialize Firebase. Check console.", "error");
-    }
-});
-
-
-// === EXISTING NAVIGATION, SCROLL, AND STYLE LOGIC (RETAINED) ===
-
-// Define navigation buttons (no Explore)
-const NAV_LINKS = [
-  { label: "Home", target: "top" },
-  { label: "Schedule", target: "scheduleForm" },
-  { label: "Leaderboard", target: "leaderboardList" },
-  { label: "Feedback", target: "feedbackForm" },
-  { label: "Profile", target: "profileSection" },
-];
-
-// ====== FIXED NAV BAR (Keep Existing Logic) ======
-const nav = document.querySelector('nav');
-if (nav) {
-    nav.style.position = 'fixed';
-    nav.style.top = '0';
-    nav.style.width = '100%';
-    nav.style.zIndex = '1000';
-    nav.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
-    // Wait for DOM content to fully load before calculating offset
-    document.addEventListener('DOMContentLoaded', () => {
-        if (nav) {
-             document.body.style.paddingTop = nav.offsetHeight + 'px';
-        }
-    });
-
-    const navInner = document.querySelector('.nav-inner');
-    const navButtons = document.createElement('div');
-    navButtons.style.display = 'flex';
-    navButtons.style.gap = '12px';
-    navButtons.style.alignItems = 'center';
-    navButtons.style.marginLeft = '20px';
-
-    const navSearch = document.querySelector('.nav-search');
-    if (navInner && navSearch) {
-        const oldLink = navSearch.querySelector('.nav-link');
-        if (oldLink) oldLink.remove();
-        
-        navInner.insertBefore(navButtons, navSearch);
-    }
-    
-    NAV_LINKS.forEach(link => {
-      const btn = document.createElement('button');
-      btn.textContent = link.label;
-      btn.className = 'btn btn-outline nav-btn';
-      btn.dataset.target = link.target;
-
-      btn.onclick = () => {
-        if (link.target === 'top') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else if (link.target === 'profileSection') {
-          toggleProfileSection(); 
-        } else {
-          const section = document.getElementById(link.target);
-          if (section) {
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }
-      };
-
-      navButtons.appendChild(btn);
-    });
-
-    // ====== ACTIVE BUTTON HIGHLIGHT ======
-    window.addEventListener('scroll', () => {
-      const sectionIds = NAV_LINKS
-        .filter(l => l.target !== 'top' && l.target !== 'profileSection')
-        .map(l => l.target);
-      let current = '';
-      sectionIds.forEach(id => {
-        const section = document.getElementById(id);
-        if (section) {
-          const sectionTop = section.offsetTop - (nav ? nav.offsetHeight + 20 : 150); 
-          if (window.scrollY >= sectionTop) current = id;
-        }
-      });
-
-      document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active-nav');
-        if (btn.dataset.target === current) btn.classList.add('active-nav');
-      });
-    });
-
-    const style = document.createElement('style');
-    style.textContent = `
+        /* Ensure the custom styling from script.js works */
         .active-nav {
             background-color: #1f2937 !important; 
             color: white !important;
         }
-        .nav-btn {
-            color: white !important;
-            font-weight: 700 !important; 
-            width: 100px;
-            font-size: 12px; 
+
+        /* Hero / Banner */
+        header.hero {
+            position: relative;
+            overflow: hidden;
+            height: 60vh;
+            min-height: 400px;
         }
-    `;
-    document.head.appendChild(style);
-}
 
+        header.hero .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('https://placehold.co/1600x900/1e3a8a/ffffff?text=Skill+Barter+Background');
+            background-size: cover;
+            background-position: center;
+            filter: brightness(0.7);
+        }
 
-// ====== PROFILE SECTION LOGIC (FIRESTORE - RETAINED) ======
+        header.hero .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+        }
 
-const profileSection = document.getElementById('profileSection');
-const profileForm = document.getElementById('profileForm');
-if (profileForm) {
-    profileForm.onsubmit = saveProfileToFirestore;
-}
+        header.hero .hero-content {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+            color: #ebebf1;
+        }
 
-// Save profile to Firestore
-async function saveProfileToFirestore(e) {
-    e.preventDefault();
-    if (!isAuthReady || !userId) {
-        return showMessage("Authentication Error", "Please wait for user authentication.", "error");
-    }
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        header.hero h1 {
+            font-size: 2.5rem;
+            max-width: 800px;
+            line-height: 1.2;
+        }
 
-    const profile = {
-        name: document.getElementById('profileName').value.trim(),
-        skill: document.getElementById('profileSkill').value.trim(),
-        bio: document.getElementById('profileBio').value.trim(),
-        userId: userId
-    };
+        header.hero p {
+            margin-top: 16px;
+            color: #e5e7eb;
+            max-width: 700px;
+        }
 
-    if (!profile.name || !profile.skill) {
-        return showMessage('Input Required', 'Please fill in your name and skill.', 'error');
-    }
+        header.hero .hero-ctas {
+            margin-top: 24px;
+            display: flex;
+            gap: 16px;
+        }
+
+        /* Explore Skills center */
+        section.explore {
+            max-width: 1000px;
+            margin: 40px auto;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        section.explore h2 {
+            font-size: 2rem;
+            color: var(--dark);
+        }
+
+        section.explore p {
+            margin-top: 8px;
+            color: var(--muted);
+        }
+
+        .grid-skills {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+        }
+
+        .skill-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .skill-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .skill-card img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            /* Placeholder for image path issue */
+            background-color: #f3f4f6; 
+        }
+
+        .skill-card .label {
+            padding: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Main content (scheduler + side) */
+        main {
+            max-width: 1100px;
+            margin: 60px auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+            color: var(--dark);
+            border: black 1px solid;
+        }
+
+        .card h3 {
+            margin-bottom: 16px;
+            font-size: 1.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-grid input,
+        .form-grid button {
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+        }
+
+        .form-grid button {
+            background: #afafb4;
+            color: white;
+            border: none;
+        }
+
+        .session-list {
+            margin-top: 24px;
+        }
+
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        /* Side panel (leaderboard + maybe other panels) */
+        .side {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            border: black 1px solid;
+            border-radius: 12px;
+        }
+
+        .leaderboard {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+        }
+
+        .leaderboard h4 {
+            margin-bottom: 12px;
+            font-size: 1.25rem;
+            color: var(--dark);
+        }
+
+        .leaderboard ol {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .leaderboard li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .leaderboard li:last-child {
+            border-bottom: none;
+        }
+
+        .leaderboard .rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            background: #f3f4f6;
+        }
+
+        .leaderboard .rank.top {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Penultimate feedback bar */
+        .feedback-section {
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 32px 20px;
+            text-align: center;
+            border: black 1px solid;
+            margin-top: 60px;
+        }
+
+        .feedback-section h3 {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            color: var(--dark);
+        }
+
+        .feedback-section form {
+            display: max-content;
+            margin: auto;
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .feedback-section textarea {
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .feedback-section button {
+            padding: 12px 20px;
+            background: #afafb4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            align-self: flex-end;
+        }
+
+        /* Footer */
+        footer {
+            background: #111827;
+            color: #d1d5db;
+            padding: 40px 20px;
+        }
+
+        footer .footer-inner {
+            max-width: 1100px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+        }
+
+        footer h5 {
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        /* Chatbot icon & panel */
+        .chat-icon {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #526eff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+        }
+
+        .chat-panel {
+            position: fixed;
+            right: 100px;
+            bottom: 100px;
+            width: 320px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            padding: 16px;
+            display: none;
+            z-index: 99;
+        }
+
+        .chat-panel h4 {
+            margin-bottom: 12px;
+            font-size: 1.2rem;
+        }
+
+        .chat-messages {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            height: 160px;
+            overflow-y: auto;
+            padding: 8px;
+            margin-bottom: 12px;
+        }
+
+        .chat-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input-group input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+        }
+
+        .chat-input-group button {
+            background: #526eff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Message Container: Used by script.js showMessage function -->
+    <div id="message-container"></div>
     
-    try {
-        const profileRef = doc(db, 'artifacts', appId, 'users', userId, 'profile', 'data');
-        await setDoc(profileRef, profile);
+    <!-- NAV -->
+    <nav>
+        <div class="nav-inner">
+            <div class="nav-brand">
+                <div class="logo">SBB</div>
+                <div class="tit">Skill BarterBox</div>
+            </div>
+            <!-- The navigation buttons are added by script.js -->
+            <div class="nav-search">
+                <input id="navSearch" placeholder="🔎Search skills, sessions, people..." />
+                <!-- This 'Join Us' link is removed by JS when the nav buttons are added -->
+                <a href="joinus.html" class="nav-link hidden">
+                    <button class="nav-btn">Join Us</button>
+                </a>
+            </div>
+        </div>
+    </nav>
 
-        document.getElementById('dispName').textContent = profile.name;
-        document.getElementById('dispSkill').textContent = profile.skill;
-        document.getElementById('dispBio').textContent = profile.bio;
-        document.getElementById('profileDisplay').style.display = 'block';
-        showMessage('Profile Saved', 'Your profile has been saved successfully to the cloud.', 'success');
+    <!-- HERO SECTION -->
+    <header class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1>Learn, Teach & Barter <span style="color: #526eff">Skills</span></h1>
+            <p>Join a community where your skills become currency. Exchange knowledge, build connections, grow together.
+            </p>
+            <div class="hero-ctas">
+                <button class="btn">Start Teaching</button>
+                <button class="btn btn-outline">Browse Skills</button>
+            </div>
+        </div>
+    </header>
 
-    } catch (e) {
-        console.error("Error saving profile:", e);
-        showMessage('Save Failed', 'Could not save profile data. Check console.', 'error');
-    }
-}
+    <!-- EXPLORE SKILLS CENTERED -->
+    <section class="explore">
+        <h2>Explore Skills</h2>
+        <p><i>Share What You Know Learn What You Love </i></p>
+        <br>
+        <div class="grid-skills" id="skillsGrid"></div>
+    </section>
 
-// Load profile from Firestore
-async function loadUserProfile(appId, userId) {
-    try {
-        const profileRef = doc(db, 'artifacts', appId, 'users', userId, 'profile', 'data');
-        const docSnap = await getDoc(profileRef);
-
-        if (docSnap.exists()) {
-            const savedProfile = docSnap.data();
-            document.getElementById('profileName').value = savedProfile.name || '';
-            document.getElementById('profileSkill').value = savedProfile.skill || '';
-            document.getElementById('profileBio').value = savedProfile.bio || '';
-
-            document.getElementById('dispName').textContent = savedProfile.name || '';
-            document.getElementById('dispSkill').textContent = savedProfile.skill || '';
-            document.getElementById('dispBio').textContent = savedProfile.bio || '';
-            document.getElementById('profileDisplay').style.display = 'block';
-            console.log("Profile loaded from Firestore.");
-        } else {
-            console.log("No profile found for this user. Starting fresh.");
-        }
-    } catch (e) {
-        console.error("Error loading profile:", e);
-    }
-}
-
-// Toggle show/hide for profile section
-function toggleProfileSection() {
-    if (!profileSection) return; 
-    if (profileSection.style.display === 'none' || profileSection.style.display === '') {
-        profileSection.style.display = 'block';
-        setTimeout(() => {
-            profileSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50);
-    } else {
-        profileSection.style.display = 'none';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-}
-
-
-// ====== FEEDBACK SUBMISSION TO FLASK API (PORT 5000 UPDATED) ======
-
-/**
- * Submits feedback to the Flask backend's /contact API (which saves to SQLite).
- */
-async function submitFeedbackToBackend(e) {
-    e.preventDefault();
-    const name = document.getElementById('feedbackName').value.trim();
-    const email = document.getElementById('feedbackEmail').value.trim();
-    const message = document.getElementById('feedbackInput').value.trim();
-
-    if (!message) {
-        return showMessage('Input Required', 'Please type some feedback.', 'error');
-    }
-    
-    // Clear form fields immediately to give visual feedback
-    document.getElementById('feedbackInput').value = '';
-    document.getElementById('feedbackName').value = '';
-    document.getElementById('feedbackEmail').value = '';
-
-    try {
-        // ⚠️ Port changed to 5000
-        const response = await fetch("http://127.0.0.1:5000/contact", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ name, email, message })
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.status === 'success') {
-            showMessage('Feedback Submitted', data.message, 'success');
-        } else {
-            // Handle server-side error messages
-            throw new Error(data.message || `Server Error: ${response.status}`);
-        }
-
-    } catch (error) {
-        console.error("Error submitting feedback:", error);
-        showMessage('Submission Failed', `Error: ${error.message}. Check backend console.`, 'error');
-    }
-}
-
-// ====== BACKEND CONNECTION TEST (PORT 5000 UPDATED) ======
-
-/**
- * Function to test the connection to the Flask backend's /test route.
- * * NOTE: The backend is now expected to be running on port 5000.
- */
-function testBackendConnection() {
-    // ⚠️ Port changed to 5000
-    const backendUrl = "http://127.0.0.1:5000/test"; 
-
-    console.log("Attempting to connect to:", backendUrl);
-
-    fetch(backendUrl, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ 
-            name: "Skill Barter Frontend",
-            test_type: "Connection Check"
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json(); 
-    })
-    .then(data => {
-        console.log("✅ Success! Response from Backend:", data);
-        showMessage("Backend Test Successful", "Message from server: " + data.message, "success");
-    })
-    .catch(error => {
-        console.error("❌ Error connecting to backend:", error);
-        showMessage("Connection Error", "Could not connect to the backend (or CORS issue). Check console for details. Ensure Flask server is running on port 5000.", "error");
-    });
-}
-
-/**
- * Custom function to show a message box (instead of alert()).
- */
-function showMessage(title, message, type) {
-    const messageContainer = document.getElementById('message-container');
-    if (!messageContainer) {
-         console.warn(`Message container not found. Message: ${title} - ${message}`);
-         return;
-    }
-    
-    const msgBox = document.createElement('div');
-    msgBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-xl text-white z-50 transition-opacity duration-300`;
-
-    if (type === 'success') {
-        msgBox.classList.add('bg-green-600');
-    } else if (type === 'error') {
-        msgBox.classList.add('bg-red-600');
-    } else {
-         msgBox.classList.add('bg-blue-600');
-    }
-
-    msgBox.innerHTML = `
-        <strong class="block text-lg">${title}</strong>
-        <p class="mt-1">${message}</p>
-    `;
-
-    messageContainer.appendChild(msgBox);
-
-    // Automatically remove the message after 5 seconds
-    setTimeout(() => {
-        msgBox.style.opacity = '0';
-        setTimeout(() => msgBox.remove(), 300); // Remove element after fade
-    }, 5000);
-}
-```eof
-
-***
-
-## 2. `frontend/index.html` (Port 5000 Text Update)
-
-I'm providing the relevant `<div>` for the API Test block, where the port is explicitly mentioned in the UI text, ensuring it matches your new backend configuration.
-
-```html
+    <!-- MAIN CONTENT -->
+    <main>
+        <!-- API Test Block - Added for easy connection testing -->
         <div class="card" style="grid-column: 1 / -1; margin-bottom: 20px;">
             <h3>Backend API Connection Tester</h3>
+            <!-- PORT REFERENCE UPDATED TO 5000 -->
             <p style="color: var(--muted); margin-bottom: 12px;">Use this button to test if the Flask server is running correctly on port <code style="background-color: #eef; padding: 2px 4px; border-radius: 4px;">5000</code> and CORS is enabled. Check your console!</p>
             <button 
                 id="test-connection-btn"
@@ -378,3 +558,268 @@ I'm providing the relevant `<div>` for the API Test block, where the port is exp
                 🚀 Send Test API Request to /test
             </button>
         </div>
+        
+        <div class="card">
+            <h3>Schedule a Barter Session</h3>
+            <form id="scheduleForm" class="form-grid">
+                <input id="sessionTitle" placeholder="Title — e.g. Intro to UI Design" />
+                <input type="date" id="sessionDate" />
+                <input type="time" id="sessionTime" />
+                <button type="submit">Add & Notify</button>
+            </form>
+
+            <div class="session-list" id="sessionList"></div>
+        </div>
+
+        <div class="side">
+            <div class="leaderboard">
+                <h4><b>Leaderboard</b></h4>
+                <ol id="leaderboardList"></ol>
+            </div>
+            <!-- you could add more side panels here -->
+        </div>
+    </main>
+    
+    <!-- PROFILE SECTION (REQUIRED BY SCRIPT.JS) -->
+    <section id="profileSection" style="display: none; background: white; margin: 60px auto; padding: 40px 20px; max-width: 600px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h2 style="text-align:center;">My Profile</h2>
+        <div style="text-align: center; margin-top: 8px; color: #3b82f6;">User ID: <span id="currentUserId">Loading...</span></div>
+        <form id="profileForm" style="display:flex; flex-direction:column; gap:12px; margin-top: 20px;">
+            <input id="profileName" placeholder="Your Name" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+            <input id="profileSkill" placeholder="Your Main Skill" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+            <textarea id="profileBio" placeholder="Short Bio..." style="padding:10px; border:1px solid #d1d5db; border-radius:8px; resize:vertical;"></textarea>
+            <button type="submit" class="btn" style="align-self:flex-end; background: #22c55e;">Save Profile</button>
+        </form>
+        <div id="profileDisplay" style="margin-top:20px; display:none; border-top:1px solid #e5e7eb; padding-top:20px;">
+            <h3>Profile Info</h3>
+            <p><strong>Name:</strong> <span id="dispName"></span></p>
+            <p><strong>Skill:</strong> <span id="dispSkill"></span></p>
+            <p><strong>Bio:</strong> <span id="dispBio"></span></p>
+        </div>
+    </section>
+
+    <!-- PENULTIMATE FEEDBACK BAR -->
+    <section class="feedback-section">
+        <h3>We’d love your feedback</h3>
+        <form id="feedbackForm">
+            <input id="feedbackName" type="text" placeholder="Your Name (for feedback form)" style="padding: 12px; border: 1px solid #d1d5db; border-radius: 8px;">
+            <input id="feedbackEmail" type="email" placeholder="Your Email (optional)" style="padding: 12px; border: 1px solid #d1d5db; border-radius: 8px;">
+            <textarea id="feedbackInput" placeholder="Type feedback..."></textarea>
+            <button type="submit">Send Feedback</button>
+        </form>
+        
+        <h4 style="margin-top: 30px; font-size: 1.2rem; color: #526eff;">Recent Feedback</h4>
+        <div id="feedbackList" style="text-align: left; max-width: 600px; margin: 15px auto;">
+            <p style="color: var(--muted); text-align: center;">Loading feedback...</p>
+        </div>
+    </section>
+
+    <!-- CHATBOT ICON + PANEL -->
+    <div class="chat-icon" id="chatIcon">💬</div>
+    <div class="chat-panel" id="chatPanel">
+        <h4>SkillBarterBot</h4>
+        <div class="chat-messages" id="chatMessages">
+            <div><strong>Bot:</strong> Hi! Ask me about schedules, skills, or points.</div>
+        </div>
+        <div class="chat-input-group">
+            <input id="botInput" placeholder="Type a message..." />
+            <button id="sendBotBtn">Send</button>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-inner">
+            <div>
+                <h5>About</h5>
+                <p>Skill BarterBox — A peer-to-peer skill exchange community.</p>
+            </div>
+            <div>
+                <h5>Product</h5>
+                <p>Browse • Pricing • Careers</p>
+            </div>
+            <div>
+                <h5>Legal</h5>
+                <p>Privacy • Terms • Contact</p>
+            </div>
+        </div>
+    </footer>
+    <!-- GSAP Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- ScrollTrigger Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+
+    <script>
+        // Register ScrollTrigger plugin
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Animate cards from left on scroll
+        gsap.utils.toArray('.grid-skills').forEach((card, i) => {
+            gsap.from(card, {
+                x: -200,             // slide in from left
+                opacity: 0,          // fade in
+                duration: 3,         // animation time
+                delay: i * 0.2,      // stagger delay for smooth sequence
+                scrollTrigger: {
+                    trigger: card,     // each card triggers animation
+                    start: "top 85%",  // when top of card reaches 85% of viewport
+                    toggleActions: "play none none reverse", // play forward & reverse on scroll up,
+                    scrub: 1.,
+                   
+                },
+               stagger: 0.3,
+            });
+               
+        });
+
+        gsap.utils.toArray('.card').forEach((card, i) => {
+            gsap.from(card, {
+                x: -200,             // slide in from left
+                opacity: 0,          // fade in
+                duration: 2,         // animation time
+                delay: i * 1,      // stagger delay for smooth sequence
+                scrollTrigger: {
+                    trigger: card,     // each card triggers animation
+                    start: "top 85%",  // when top of card reaches 85% of viewport
+                    toggleActions: "play none none reverse", // play forward & reverse on scroll up,
+                    scrub: 1.,
+                   
+                },
+               stagger: 0.3,
+            });
+               
+        });
+        
+    </script>
+    
+    <script>
+        // Fill skills grid
+        const SKILLS = [
+            { name: "Dance", img: "dance.jpg" },
+            { name: "Music", img: "music.jpg" },
+            { name: "Coding", img: "coding.jpg" },
+            { name: "Computers", img: "computer.jpg" },
+            { name: "Languages", img: "lang.jpg" },
+            { name: "Cooking", img: "cooking.jpg" },
+        ];
+        const skillsGrid = document.getElementById('skillsGrid');
+        SKILLS.forEach(s => {
+            const card = document.createElement('a');
+            card.className = 'skill-card';
+            card.href = '#';
+            // Note: Placeholder used for image source since local files are unavailable
+            card.innerHTML = `<img src="https://placehold.co/100x100/1E3A8A/FFFFFF?text=${s.name}" alt="${s.name}" /><div class="label">${s.name}</div>`;
+            skillsGrid.appendChild(card);
+        });
+
+        // Sessions & schedule logic
+        let sessions = JSON.parse(localStorage.getItem('sb_sessions') || '[]');
+        const sessionList = document.getElementById('sessionList');
+        function renderSessions() {
+            if (sessions.length === 0) {
+                sessionList.innerHTML = '<div style="color: var(--muted)">No upcoming sessions yet.</div>';
+            } else {
+                sessionList.innerHTML = sessions.map(s => `
+          <div class="session-item">
+            <div>
+              <div style="font-weight:600">${s.title}</div>
+              <div style="color: var(--muted); font-size: 0.9rem;">${s.date} • ${s.time}</div>
+            </div>
+          </div>
+        `).join('');
+            }
+        }
+        renderSessions();
+
+        document.getElementById('scheduleForm').onsubmit = e => {
+            e.preventDefault();
+            const title = document.getElementById('sessionTitle').value || 'New Session';
+            const date = document.getElementById('sessionDate').value;
+            const time = document.getElementById('sessionTime').value;
+            if (!date || !time) return showMessage('Input Required', 'Please choose date & time', 'error');
+            sessions.unshift({ title, date, time });
+            localStorage.setItem('sb_sessions', JSON.stringify(sessions));
+            renderSessions();
+            document.getElementById('sessionTitle').value = '';
+            document.getElementById('sessionDate').value = '';
+            document.getElementById('sessionTime').value = '';
+            showMessage('Scheduled', 'Session added to local list.', 'success');
+        };
+
+        // Leaderboard logic
+        let leaders = JSON.parse(localStorage.getItem('sb_leaderboard') || JSON.stringify([
+            { name: "Asha R.", points: 420 },
+            { name: "Ravi K.", points: 375 },
+            { name: "Maya S.", points: 325 }
+        ]));
+        const leaderboardList = document.getElementById('leaderboardList');
+        function renderLeaders() {
+            leaderboardList.innerHTML = leaders.map((p, i) => `
+        <li>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="rank ${i === 0 ? 'top' : ''}">${i + 1}</div>
+            <div>${p.name} <span style="color: var(--muted); font-size:0.9rem;">${p.points} pts</span></div>
+          </div>
+          ${i === 0 ? '<span style="color:#b45309;font-weight:600;font-size:0.9rem">Top</span>' : ''}
+        </li>
+      `).join('');
+        }
+        renderLeaders();
+
+        // Feedback submission (TEMPORARILY uses script.js showMessage)
+        document.getElementById('feedbackForm').onsubmit = e => {
+            e.preventDefault();
+            const name = document.getElementById('feedbackName').value.trim();
+            const email = document.getElementById('feedbackEmail').value.trim();
+            const fb = document.getElementById('feedbackInput').value.trim();
+
+            if (!fb) return showMessage('Input Required', 'Please type some feedback.', 'error');
+            
+            // This handler is now overridden by the module script.
+            showMessage('Form Hook Error', 'Please check the script.js file. Submission is being handled by module script.', 'error');
+        };
+
+        // Chatbot icon + panel logic
+        const chatIcon = document.getElementById('chatIcon');
+        const chatPanel = document.getElementById('chatPanel');
+        const sendBotBtn = document.getElementById('sendBotBtn');
+        const botInput = document.getElementById('botInput');
+        const chatMessages = document.getElementById('chatMessages');
+
+        chatIcon.onclick = () => {
+            if (chatPanel.style.display === 'block') chatPanel.style.display = 'none';
+            else chatPanel.style.display = 'block';
+        };
+
+        sendBotBtn.onclick = () => {
+            const msg = botInput.value.trim();
+            if (!msg) return;
+            appendMessage('You', msg);
+            let reply = 'Sorry, I did not understand. Try asking about scheduling or skills.';
+            const low = msg.toLowerCase();
+            if (low.includes('schedule')) reply = 'Use the schedule form — pick date & time then click Add & Notify.';
+            if (low.includes('leaderboard') || low.includes('points')) reply = 'Earn points by teaching sessions and receiving feedback.';
+            if (low.includes('match')) reply = 'Use Smart Match (coming soon!) to find barter partners.';
+            
+            // This will be replaced by a fetch call to the /chat endpoint later!
+            setTimeout(() => appendMessage('Bot', reply), 300);
+            botInput.value = '';
+        };
+
+        function appendMessage(sender, msg) {
+            const el = document.createElement('div');
+            el.style.marginBottom = '8px';
+            el.innerHTML = `<strong>${sender}:</strong> ${msg}`;
+            chatMessages.appendChild(el);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+    </script>
+    <!-- Removed duplicate/redundant script tags and the old profile redirect script -->
+
+    <!-- Load the main application logic (must be type="module" for Firebase imports) -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
