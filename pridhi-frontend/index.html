@@ -5,18 +5,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Skill BarterBox</title>
+    <!-- Load Tailwind CSS for utility classes (used in script.js showMessage) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Existing custom styles */
         #feedbackInput {
             border-radius: 12px;
             border: black 1px solid;
         }
 
-        /* --- Navigation Button Styling (Single Line Text) --- */
-
-        /* Ensures the link container doesn't disrupt the layout */
-
-
-        /* Basic reset & typography */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -26,7 +24,7 @@
         body,
         html {
             height: 100%;
-            font-family: sans-serif;
+            font-family: 'Inter', sans-serif;
             line-height: 1.5;
         }
 
@@ -41,17 +39,16 @@
 
         :root {
             --bg: #f7f9fb;
-            --primary: #ebebf1;
+            --primary: #526eff; /* Adjusted primary for better contrast */
             --dark: #1f2937;
             --muted: #6b7280;
             --card: #ffffff;
-            background-image: url(bg2.jpg);
+            /* Using a placeholder since local images won't load */
+            background-color: var(--bg);
+            /* background-image: url(bg2.jpg); */
             background-position: center center;
             background-repeat: no-repeat;
             background-size: cover;
-
-
-
         }
 
 
@@ -59,18 +56,19 @@
         nav {
             background: white;
             border-bottom: 1px solid #e5e7eb;
-            position: sticky;
-            top: 0;
-            z-index: 50;
+            /* The JS handles position:fixed, but keep this style */
+            z-index: 1000;
         }
 
         .nav-btn {
-            background-color: #babbbc;
+            background-color: #afafb4;
             color: white;
             border-radius: 20px;
-            width: 65px;
+            width: 100px; /* Increased width to match JS */
             height: 30px;
             border: #6b7280;
+            font-weight: 700 !important;
+            font-size: 12px;
         }
 
         .nav-inner {
@@ -91,16 +89,15 @@
         .nav-brand .logo {
             width: 40px;
             height: 40px;
-            background-image: url(logo.jpg);
-            background-repeat: no-repeat;
-            background-size: cover;
+            /* Placeholder for logo image */
+            background-color: #3b82f6; 
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
-            padding-left: 30px
+            padding-left: 0; 
         }
 
         .nav-brand .tit {
@@ -112,7 +109,6 @@
             display: flex;
             align-items: center;
             gap: 12px;
-
         }
 
         .nav-search input {
@@ -137,6 +133,12 @@
             border: 1px solid #d1d5db;
             color: white;
         }
+        
+        /* Ensure the custom styling from script.js works */
+        .active-nav {
+            background-color: #1f2937 !important; 
+            color: white !important;
+        }
 
         /* Hero / Banner */
         header.hero {
@@ -152,7 +154,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-image: url('https://images.unsplash.com/photo-1529245019870-59a4c785a9f7?auto=format&fit=crop&w=1600&q=80');
+            background-image: url('https://placehold.co/1600x900/1e3a8a/ffffff?text=Skill+Barter+Background');
             background-size: cover;
             background-position: center;
             filter: brightness(0.7);
@@ -164,7 +166,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: var(--overlay);
+            background: rgba(0, 0, 0, 0.4);
         }
 
         header.hero .hero-content {
@@ -208,12 +210,12 @@
 
         section.explore h2 {
             font-size: 2rem;
-            color: var(--primary);
+            color: var(--dark);
         }
 
         section.explore p {
             margin-top: 8px;
-            color: white;
+            color: var(--muted);
         }
 
         .grid-skills {
@@ -240,6 +242,8 @@
             width: 100%;
             height: 100px;
             object-fit: cover;
+            /* Placeholder for image path issue */
+            background-color: #f3f4f6; 
         }
 
         .skill-card .label {
@@ -263,7 +267,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             padding: 24px;
-            color: blue;
+            color: var(--dark);
             border: black 1px solid;
         }
 
@@ -319,13 +323,12 @@
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             padding: 24px;
-
         }
 
         .leaderboard h4 {
             margin-bottom: 12px;
             font-size: 1.25rem;
-            color: blue;
+            color: var(--dark);
         }
 
         .leaderboard ol {
@@ -370,12 +373,13 @@
             padding: 32px 20px;
             text-align: center;
             border: black 1px solid;
+            margin-top: 60px;
         }
 
         .feedback-section h3 {
             font-size: 1.5rem;
             margin-bottom: 16px;
-            color: blue;
+            color: var(--dark);
         }
 
         .feedback-section form {
@@ -386,7 +390,6 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-
         }
 
         .feedback-section textarea {
@@ -435,7 +438,7 @@
             width: 64px;
             height: 64px;
             border-radius: 50%;
-            background: var(--primary);
+            background: #526eff;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -485,7 +488,7 @@
         }
 
         .chat-input-group button {
-            background: var(--primary);
+            background: #526eff;
             color: white;
             border: none;
             padding: 8px 12px;
@@ -495,19 +498,21 @@
 </head>
 
 <body>
-
+    <!-- Message Container: Used by script.js showMessage function -->
+    <div id="message-container"></div>
+    
     <!-- NAV -->
     <nav>
         <div class="nav-inner">
             <div class="nav-brand">
-                <div class="logo"></div>
+                <div class="logo">SBB</div>
                 <div class="tit">Skill BarterBox</div>
             </div>
-
-
+            <!-- The navigation buttons are added by script.js -->
             <div class="nav-search">
                 <input id="navSearch" placeholder="🔎Search skills, sessions, people..." />
-                <a href="joinus.html" class="nav-link">
+                <!-- This 'Join Us' link is removed by JS when the nav buttons are added -->
+                <a href="joinus.html" class="nav-link hidden">
                     <button class="nav-btn">Join Us</button>
                 </a>
             </div>
@@ -519,7 +524,7 @@
         <div class="hero-bg"></div>
         <div class="hero-overlay"></div>
         <div class="hero-content">
-            <h1>Learn, Teach & Barter <span style="color: var(--primary)"></span></h1>
+            <h1>Learn, Teach & Barter <span style="color: #526eff">Skills</span></h1>
             <p>Join a community where your skills become currency. Exchange knowledge, build connections, grow together.
             </p>
             <div class="hero-ctas">
@@ -539,6 +544,20 @@
 
     <!-- MAIN CONTENT -->
     <main>
+        <!-- API Test Block - Added for easy connection testing -->
+        <div class="card" style="grid-column: 1 / -1; margin-bottom: 20px;">
+            <h3>Backend API Connection Tester</h3>
+            <p style="color: var(--muted); margin-bottom: 12px;">Use this button to test if the Flask server is running correctly on port <code style="background-color: #eef; padding: 2px 4px; border-radius: 4px;">5001</code> and CORS is enabled. Check your console!</p>
+            <button 
+                id="test-connection-btn"
+                onclick="testBackendConnection()"
+                class="btn"
+                style="background: #3b82f6; color: white; padding: 10px 20px; width: auto; border-radius: 8px;"
+            >
+                🚀 Send Test API Request to /test
+            </button>
+        </div>
+        
         <div class="card">
             <h3>Schedule a Barter Session</h3>
             <form id="scheduleForm" class="form-grid">
@@ -559,14 +578,39 @@
             <!-- you could add more side panels here -->
         </div>
     </main>
+    
+    <!-- PROFILE SECTION (REQUIRED BY SCRIPT.JS) -->
+    <section id="profileSection" style="display: none; background: white; margin: 60px auto; padding: 40px 20px; max-width: 600px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h2 style="text-align:center;">My Profile</h2>
+        <div style="text-align: center; margin-top: 8px; color: #3b82f6;">User ID: <span id="currentUserId">Loading...</span></div>
+        <form id="profileForm" style="display:flex; flex-direction:column; gap:12px; margin-top: 20px;">
+            <input id="profileName" placeholder="Your Name" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+            <input id="profileSkill" placeholder="Your Main Skill" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+            <textarea id="profileBio" placeholder="Short Bio..." style="padding:10px; border:1px solid #d1d5db; border-radius:8px; resize:vertical;"></textarea>
+            <button type="submit" class="btn" style="align-self:flex-end; background: #22c55e;">Save Profile</button>
+        </form>
+        <div id="profileDisplay" style="margin-top:20px; display:none; border-top:1px solid #e5e7eb; padding-top:20px;">
+            <h3>Profile Info</h3>
+            <p><strong>Name:</strong> <span id="dispName"></span></p>
+            <p><strong>Skill:</strong> <span id="dispSkill"></span></p>
+            <p><strong>Bio:</strong> <span id="dispBio"></span></p>
+        </div>
+    </section>
 
     <!-- PENULTIMATE FEEDBACK BAR -->
     <section class="feedback-section">
         <h3>We’d love your feedback</h3>
         <form id="feedbackForm">
+            <input id="feedbackName" type="text" placeholder="Your Name (for feedback form)" style="padding: 12px; border: 1px solid #d1d5db; border-radius: 8px;">
+            <input id="feedbackEmail" type="email" placeholder="Your Email (optional)" style="padding: 12px; border: 1px solid #d1d5db; border-radius: 8px;">
             <textarea id="feedbackInput" placeholder="Type feedback..."></textarea>
             <button type="submit">Send Feedback</button>
         </form>
+        
+        <h4 style="margin-top: 30px; font-size: 1.2rem; color: #526eff;">Recent Feedback</h4>
+        <div id="feedbackList" style="text-align: left; max-width: 600px; margin: 15px auto;">
+            <p style="color: var(--muted); text-align: center;">Loading feedback...</p>
+        </div>
     </section>
 
     <!-- CHATBOT ICON + PANEL -->
@@ -629,7 +673,7 @@
                
         });
 
-gsap.utils.toArray('.card').forEach((card, i) => {
+        gsap.utils.toArray('.card').forEach((card, i) => {
             gsap.from(card, {
                 x: -200,             // slide in from left
                 opacity: 0,          // fade in
@@ -646,12 +690,9 @@ gsap.utils.toArray('.card').forEach((card, i) => {
             });
                
         });
-
-
         
-
     </script>
-
+    
     <script>
         // Fill skills grid
         const SKILLS = [
@@ -667,7 +708,8 @@ gsap.utils.toArray('.card').forEach((card, i) => {
             const card = document.createElement('a');
             card.className = 'skill-card';
             card.href = '#';
-            card.innerHTML = `<img src="${s.img}?w=400&q=60" alt="${s.name}" /><div class="label">${s.name}</div>`;
+            // Note: Placeholder used for image source since local files are unavailable
+            card.innerHTML = `<img src="https://placehold.co/100x100/1E3A8A/FFFFFF?text=${s.name}" alt="${s.name}" /><div class="label">${s.name}</div>`;
             skillsGrid.appendChild(card);
         });
 
@@ -695,13 +737,14 @@ gsap.utils.toArray('.card').forEach((card, i) => {
             const title = document.getElementById('sessionTitle').value || 'New Session';
             const date = document.getElementById('sessionDate').value;
             const time = document.getElementById('sessionTime').value;
-            if (!date || !time) return alert('Please choose date & time');
+            if (!date || !time) return showMessage('Input Required', 'Please choose date & time', 'error');
             sessions.unshift({ title, date, time });
             localStorage.setItem('sb_sessions', JSON.stringify(sessions));
             renderSessions();
             document.getElementById('sessionTitle').value = '';
             document.getElementById('sessionDate').value = '';
             document.getElementById('sessionTime').value = '';
+            showMessage('Scheduled', 'Session added to local list.', 'success');
         };
 
         // Leaderboard logic
@@ -724,13 +767,20 @@ gsap.utils.toArray('.card').forEach((card, i) => {
         }
         renderLeaders();
 
-        // Feedback
+        // Feedback submission (TEMPORARILY uses script.js showMessage)
         document.getElementById('feedbackForm').onsubmit = e => {
             e.preventDefault();
+            const name = document.getElementById('feedbackName').value.trim();
+            const email = document.getElementById('feedbackEmail').value.trim();
             const fb = document.getElementById('feedbackInput').value.trim();
-            if (!fb) return alert('Please type something');
-            alert('Thanks for your feedback!');
+
+            if (!fb) return showMessage('Input Required', 'Please type some feedback.', 'error');
+            
+            // This will be replaced by a fetch call to the /contact endpoint later!
+            showMessage('Feedback Submitted (Local)', 'Thanks for your feedback! (Not yet sent to Flask)', 'success');
             document.getElementById('feedbackInput').value = '';
+            document.getElementById('feedbackName').value = '';
+            document.getElementById('feedbackEmail').value = '';
         };
 
         // Chatbot icon + panel logic
@@ -754,6 +804,8 @@ gsap.utils.toArray('.card').forEach((card, i) => {
             if (low.includes('schedule')) reply = 'Use the schedule form — pick date & time then click Add & Notify.';
             if (low.includes('leaderboard') || low.includes('points')) reply = 'Earn points by teaching sessions and receiving feedback.';
             if (low.includes('match')) reply = 'Use Smart Match (coming soon!) to find barter partners.';
+            
+            // This will be replaced by a fetch call to the /chat endpoint later!
             setTimeout(() => appendMessage('Bot', reply), 300);
             botInput.value = '';
         };
@@ -767,32 +819,9 @@ gsap.utils.toArray('.card').forEach((card, i) => {
         }
 
     </script>
-    <script>
+    <!-- Removed duplicate/redundant script tags and the old profile redirect script -->
 
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Find the nav search area
-            const navSearch = document.querySelector('.nav-search');
-
-            // Create the Profile button
-            const profileBtn = document.createElement('button');
-            profileBtn.textContent = 'Profile';
-            profileBtn.className = 'btn btn-outline';
-
-            // Add click event to open profile.html
-            profileBtn.onclick = () => {
-                window.location.href = 'profile.html';
-            };
-
-            // Append to the nav bar (to the right of "Join")
-            navSearch.appendChild(profileBtn);
-        });
-
-
-    </script>
-    <script src="script.js"></script>
-    <script src="gsap.js"></script>
+    <!-- Load the main application logic (must be type="module" for Firebase imports) -->
+    <script type="module" src="script.js"></script>
 </body>
-
 </html>
